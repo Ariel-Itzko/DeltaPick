@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import psycopg2
 import os
+import uvicorn
 from dotenv import load_dotenv
 
 app = FastAPI()
@@ -64,3 +65,7 @@ def run_close(item: Item):
             cursor.close()
         if conn is not None:
             conn.close()
+
+
+if __name__ == "__main__":
+    uvicorn.run("api_close_function:app", host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
