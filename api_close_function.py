@@ -25,16 +25,15 @@ def get_connection():
         port=_required_env("DB_PORT")
     )
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 class Item(BaseModel):
     a: int
     b: str
     c: float
     d: int
-
-
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
 
 @app.post("/close")
 def run_close(item: Item):
