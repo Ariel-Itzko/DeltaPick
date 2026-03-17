@@ -14,13 +14,15 @@ def _required_env(name: str) -> str:
         raise ValueError(f"Missing required environment variable: {name}")
     return value
 
-conn = psycopg2.connect(
-    host=_required_env("DB_HOST"),
-    database=_required_env("DB_NAME"),
-    user=_required_env("DB_USER"),
-    password=_required_env("DB_PASSWORD"),
-    port=_required_env("DB_PORT")
-)
+
+def get_connection():
+    return psycopg2.connect(
+        host=_required_env("DB_HOST"),
+        database=_required_env("DB_NAME"),
+        user=_required_env("DB_USER"),
+        password=_required_env("DB_PASSWORD"),
+        port=_required_env("DB_PORT")
+    )
 
 class Item(BaseModel):
     a: int
@@ -35,7 +37,10 @@ def health_check():
 
 @app.post("/close")
 def run_close(item: Item):
+    conn = None
+    cursor = None
     try:
+        conn = get_connection()
         cursor = conn.cursor()
 
         query = "SELECT * FROM close(%s, %s, %s, %s);"
@@ -44,8 +49,6 @@ def run_close(item: Item):
         rows = cursor.fetchall()
 
         colnames = [desc[0] for desc in cursor.description]
-
-        cursor.close()
 
         result = [dict(zip(colnames, row)) for row in rows]
 
@@ -56,3 +59,8 @@ def run_close(item: Item):
 
     except Exception as e:
         return {"error": str(e)}
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
