@@ -1,15 +1,25 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import psycopg2
+import os
+from dotenv import load_dotenv
 
 app = FastAPI()
 
+load_dotenv()
+
+def _required_env(name: str) -> str:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        raise ValueError(f"Missing required environment variable: {name}")
+    return value
+
 conn = psycopg2.connect(
-    host="aws-1-ap-northeast-1.pooler.supabase.com",
-    database="postgres",
-    user="postgres.pvqkfmfpwybhfebnxebl",
-    password="!xnW+_YzMkk7am2",
-    port="5432"
+    host=_required_env("DB_HOST"),
+    database=_required_env("DB_NAME"),
+    user=_required_env("DB_USER"),
+    password=_required_env("DB_PASSWORD"),
+    port=_required_env("DB_PORT")
 )
 
 class Item(BaseModel):
@@ -17,6 +27,11 @@ class Item(BaseModel):
     b: str
     c: float
     d: int
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 @app.post("/close")
 def run_close(item: Item):
@@ -26,14 +41,12 @@ def run_close(item: Item):
         query = "SELECT * FROM close(%s, %s, %s, %s);"
         cursor.execute(query, (item.a, item.b, item.c, item.d))
 
-        rows = cursor.fetchall()  # 🔥 כל התוצאות
+        rows = cursor.fetchall()
 
-        # 🔹 שמות העמודות
         colnames = [desc[0] for desc in cursor.description]
 
         cursor.close()
 
-        # 🔹 הפיכה ל-JSON נורמלי
         result = [dict(zip(colnames, row)) for row in rows]
 
         return {
